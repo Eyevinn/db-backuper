@@ -11,11 +11,13 @@ fi
 
 echo "Starting Valkey/Redis backup: ${DB_HOST}:${DB_PORT}"
 
+# Capture LASTSAVE before triggering BGSAVE
+LAST_SAVE=$(redis-cli -h "${DB_HOST}" -p "${DB_PORT}" ${AUTH_ARGS} LASTSAVE)
+
 # Trigger BGSAVE
 redis-cli -h "${DB_HOST}" -p "${DB_PORT}" ${AUTH_ARGS} BGSAVE || { echo "ERROR: BGSAVE failed" >&2; exit 2; }
 
 # Wait for BGSAVE to complete (poll LASTSAVE, max 120s)
-LAST_SAVE=$(redis-cli -h "${DB_HOST}" -p "${DB_PORT}" ${AUTH_ARGS} LASTSAVE)
 echo "Waiting for BGSAVE to complete..."
 for i in $(seq 1 60); do
   sleep 2
