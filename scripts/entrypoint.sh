@@ -87,7 +87,12 @@ echo "Encryption:    ${ENCRYPTION_KEY:+enabled}${ENCRYPTION_KEY:-disabled}"
 echo "=================="
 
 # Configure Minio client
-mc alias set backup "${S3_ENDPOINT}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" --api S3v4 2>/dev/null
+MC_OPTS="--api S3v4"
+if [ "${S3_INSECURE:-false}" = "true" ]; then
+  MC_OPTS="${MC_OPTS} --insecure"
+  export MC_INSECURE=true
+fi
+mc alias set backup "${S3_ENDPOINT}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" ${MC_OPTS} 2>/dev/null
 
 # Dispatch to the correct script
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
