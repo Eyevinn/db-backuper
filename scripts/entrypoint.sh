@@ -91,7 +91,7 @@ echo "Database type: ${DB_TYPE}"
 echo "Host:          ${DB_HOST}:${DB_PORT}"
 echo "Database:      ${DB_NAME:-<all>}"
 echo "S3 target:     s3://${S3_BUCKET}/${S3_KEY}"
-echo "Encryption:    ${ENCRYPTION_KEY:+enabled}${ENCRYPTION_KEY:-disabled}"
+if [ -n "${ENCRYPTION_KEY:-}" ]; then echo "Encryption:    enabled"; else echo "Encryption:    disabled"; fi
 echo "=================="
 
 # Configure Minio client
