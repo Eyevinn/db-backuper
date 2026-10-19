@@ -108,4 +108,12 @@ if [ ! -f "$SCRIPT" ]; then
   exit 1
 fi
 
+# Wait for the S3 endpoint (a freshly provisioned store answers 503 for a while).
+"${SCRIPT_DIR}/s3-wait.sh" || true
+
+# Ensure the bucket exists on backup (ClickHouse BACKUP ... TO S3 does not create it).
+if [ "$OPERATION" = "backup" ]; then
+  mc mb --ignore-existing "backup/${S3_BUCKET}" 2>/dev/null || true
+fi
+
 exec "$SCRIPT"
