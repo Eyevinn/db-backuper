@@ -99,8 +99,8 @@ scan_keys() {
     while IFS= read -r line; do
       if [ -z "$cursor" ] && [[ "$line" =~ ^1\)\ \"([0-9]+)\"$ ]]; then
         cursor="${BASH_REMATCH[1]}"
-      elif [[ "$line" =~ ^[[:space:]]+[0-9]+\)\ (\".*\")$ ]]; then
-        printf '%s\n' "${BASH_REMATCH[1]}"
+      elif [[ "$line" =~ ^([0-9]+\)[[:space:]])?[[:space:]]*[0-9]+\)\ (\".*\")$ ]]; then
+        printf '%s\n' "${BASH_REMATCH[2]}"
       fi
     done <<<"$out"
     [ -n "$cursor" ] || return 1
@@ -137,7 +137,15 @@ valkey-server --bind 127.0.0.1 --port "$LOADER_PORT" --protected-mode yes \
 LOADER_STARTED=1
 
 loader_alive() {
-  [ -f "$LOADER_PID" ] && kill -0 "$(cat "$LOADER_PID" 2>/dev/null)" >/dev/null 2>&1
+  local pid
+  [ -f "$LOADER_PID" ] || return 1
+  pid="$(cat "$LOADER_PID" 2>/dev/null)"
+  kill -0 "$pid" >/dev/null 2>&1 || return 1
+  # An exited daemon can linger as a zombie (no init reaping it in the pod): treat as dead.
+  if [ -r "/proc/${pid}/status" ] && grep -q '^State:[[:space:]]*Z' "/proc/${pid}/status"; then
+    return 1
+  fi
+  return 0
 }
 loader_failure() {
   local last
