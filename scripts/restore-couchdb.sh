@@ -44,7 +44,10 @@ if [ -n "${DB_NAME:-}" ]; then
     -d "${DOCS}" > /dev/null || { echo "ERROR: _bulk_docs failed for ${DB_NAME}" >&2; exit 5; }
 else
   # Multi-database restore
-  for DB in $(jq -r 'keys[]' "${DUMP_FILE}"); do
+  # Read the list in an assignment: a failure inside a for-loop word list is ignored by set -e.
+  DBS=$(jq -r 'if type == "object" then keys[] else error("not an object") end' "${DUMP_FILE}") || { echo "ERROR: Dump is not a valid multi-database CouchDB dump" >&2; exit 5; }
+  # shellcheck disable=SC2086
+  for DB in ${DBS}; do
     echo "Restoring database: ${DB}"
 
     # Create database if it doesn't exist
