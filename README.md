@@ -70,6 +70,10 @@ Examples:
 - `clickhouse://default:pass@ch.local:9000/analytics`
 - `couchdb://admin:admin@couch.local:5984/documents`
 
+## PostgreSQL restore and missing roles
+
+A dump records which role owns each object. When the target does not have those roles (a new instance, or the temporary instance a backup verification restores into), `pg_restore` rejects the `OWNER TO`, `GRANT`, `REVOKE` and `ALTER DEFAULT PRIVILEGES` statements and exits non-zero after loading the data. The job treats that run as restored and prints a `WARNING:` line with the number of skipped statements and the missing role names. It does so only when every error is `role "..." does not exist` on one of those statements; any other error still ends the job with `ERROR: pg_restore failed`. Owners and grants for the missing roles are not applied, so create the roles first if you need them.
+
 ## Valkey/Redis restore
 
 Valkey/Redis restore loads the backup into a throwaway `valkey-server` inside the job pod and copies the keys to the target with `MIGRATE`. The loader is built from the fork commit pinned in the Dockerfile (`VALKEY_COMMIT`, `eyevinn-osaas/valkey`), because official images cannot read these backups. Every job prints `db-backuper: valkey loader <commit>` as its first line.
