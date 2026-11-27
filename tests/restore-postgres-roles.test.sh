@@ -22,7 +22,7 @@ new_env() {
   mkdir -p "$STUBS"
   cp -R "$ROOT/scripts" "$SCRIPTS"
   chmod +x "$SCRIPTS"/*.sh
-  rm -f /tmp/download.* /tmp/decrypted.* /tmp/restore.* /tmp/pg_restore.err
+  rm -f /tmp/download.* /tmp/decrypted.* /tmp/restore.* /tmp/pg_restore.err*
   printf 'dump' >"$WORK/fixture"
   cat >"$STUBS/mc" <<'STUB'
 #!/bin/bash
@@ -98,6 +98,24 @@ echo "exit status other than 1"
 new_env
 run_script PG_RC=2 PG_STDERR="${ROLE_ERR}"
 expect "exit 5" rc_is 5
+
+echo "quoted role names and a role error mixed with a COPY failure"
+new_env
+run_script PG_RC=1 PG_STDERR='pg_restore: error: could not execute query: ERROR:  role "Weird Role-1" does not exist\nCommand was: ALTER TABLE public.t OWNER TO "Weird Role-1";\n\npg_restore: error: could not execute query: ERROR:  role "app_role" does not exist\nCommand was: GRANT ALL ON TABLE public.t TO app_role;\n\npg_restore: warning: errors ignored on restore: 2\n'
+expect "exit 0" rc_is 0
+expect "both roles named, deduplicated and sorted" has "role(s) Weird Role-1,app_role do not exist"
+new_env
+run_script PG_RC=1 PG_STDERR="${ROLE_ERR}"'pg_restore: error: COPY failed for table "t": ERROR:  invalid input syntax for type integer: "x"\n'"${SUMMARY}"
+expect "exit 5" rc_is 5
+expect "ERROR: pg_restore failed" has "ERROR: pg_restore failed"
+
+echo "no temp file is left behind"
+new_env
+run_script PG_RC=1 PG_STDERR="${ROLE_ERR}${OTHER_ERR}${SUMMARY}"
+expect "failure path removes the stderr file" bash -c '! ls /tmp/pg_restore.err.* >/dev/null 2>&1'
+new_env
+run_script PG_RC=1 PG_STDERR="${ROLE_ERR}${SUMMARY}"
+expect "success path removes the stderr file" bash -c '! ls /tmp/pg_restore.err.* >/dev/null 2>&1'
 
 echo "$PASS passed, $FAILN failed"
 [ "$FAILN" -eq 0 ]

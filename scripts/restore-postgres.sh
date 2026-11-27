@@ -22,7 +22,8 @@ fi
 RESTORE_STEP="restore"
 export PGPASSWORD="${DB_PASSWORD}"
 
-PG_RESTORE_ERRORS="/tmp/pg_restore.err"
+PG_RESTORE_ERRORS="$(mktemp /tmp/pg_restore.err.XXXXXX)"
+trap 'rm -f "${PG_RESTORE_ERRORS}"' EXIT
 
 # pg_restore keeps going after a failed statement and exits non-zero at the end. Capture stderr so
 # the one harmless case below can be told apart from a real failure. `if` keeps the ERR trap quiet.
@@ -60,7 +61,5 @@ if [ "${PG_RESTORE_RC}" -ne 0 ]; then
     exit 5
   fi
 fi
-rm -f "${PG_RESTORE_ERRORS}"
-
 rm -f "${DUMP_FILE}"
 echo "PostgreSQL restore completed successfully"
